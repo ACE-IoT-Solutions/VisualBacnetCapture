@@ -1,0 +1,9 @@
+{
+  "capture_duration": 300,
+  "capture_interval": 3600,
+  "interface": "enp1s0",
+  "capture_file": "./capture.pcap",
+  "protocol": "UDP",
+  "ports": [ 47808, 47809 ],
+  "api_key": ""
+}
