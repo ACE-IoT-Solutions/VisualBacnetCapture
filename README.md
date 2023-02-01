@@ -5,7 +5,7 @@ Eclipse VOLTTRON BACnet applications affect BACnet network health, including mon
 
 # Installation
 
-Installing this agent works the same as install any other agent on the VOLTTRON platform. 
+Installing this agent uses the standard process for installing agents on the VOLTTRON platform. You can review detailed instructions in the [official docs](https://volttron.readthedocs.io/en/main/introduction/platform-install.html#installing-and-running-agents)
 
 It is recommended to use the install-agent.py script in the VOLTTRON installation scripts directory.
 While in the activated VOLTTRON virtual environment, run the following command: 
@@ -16,20 +16,20 @@ While in the activated VOLTTRON virtual environment, run the following command:
 
 By default, the configuration file is set to capture packets on ports 47808 and 47809. If that entry in the config file is missing, the agent itself will default to port 47808. All other configuraton entries have similar safe defaults. 
 
-The only entry that will not default to anything is the API key used to upload the captured data. To find the API key, log in to Visual BACnet and open the view for the device you'd like to capture data with, typically under the site/building dropdowns. This can be found by clicking on the "Tools" tab on the top left corner of the graph. 
+The only entry that will not default to anything is the API key used to upload the captured data. To find the API key, log in to Visual BACnet and open the view for the capture node you've configured in the platform, under it's respective site. The API key can be found by clicking on the "Tools" tab on the top left corner of the graph. 
 
 # Packet capture capabilities
 
 By default, most Linux distros will only allow raw packet capture by the root user. To enable the capabilities for an arbitrary user, one must enable certain capabilities on the tcpdump executable. 
 
-This can be done using a root shell. 
+This can be done from a user with sudoer permissions. 
   1: create the ```pcap``` group if it doesn't exist.
-    ```groupadd pcap```
+    ```sudo groupadd pcap```
     
-  2: add your user to that group
-    ```usermod -aG pcap $USER```
+  2: add your user to the pcap group
+    ```sudo usermod -aG pcap <volttron-agent-user>```
     
   3: set the ```CAP_NET_RAW``` and ```CAP_NET_ADMIN+eip``` capabilities on the tcpdump executable 
-    ```setcap cap_net_raw,cap_net_admin=eip /usr/sbin/tcpdump```
+    ```sudo setcap cap_net_raw,cap_net_admin=eip /usr/sbin/tcpdump```
     Note: Some Linux distros store the tcpdump executable in /usr/bin, or somewhere else 
-    You can find the location by running ```whereis tcpdump```
+    You can find the location by running ```which tcpdump```
