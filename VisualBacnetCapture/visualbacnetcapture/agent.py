@@ -1,7 +1,11 @@
 """
-Agent documentation goes here.
-"""
+Cristian Romo
+cristian@aceiotsolutions.com
 
+Capture network packets for BACnet, or on a configurable protocol and port list
+Enable upload of packet captures to the Visual BACnet API
+
+"""
 __docformat__ = "reStructuredText"
 
 import logging
@@ -96,7 +100,7 @@ class VisualBacnetCapture(Agent):
 
     def upload_to_api(self):
         """
-        Upload captured packets to visualbacnet API
+        Upload captured packets to Visual BACnet API
         """
         self.lock.acquire()
         _log.debug(f"uploading to API... {self.api_url}")
