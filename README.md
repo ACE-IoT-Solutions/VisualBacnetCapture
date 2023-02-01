@@ -24,5 +24,12 @@ By default, most Linux distros will only allow raw packet capture by the root us
 
 This can be done using a root shell. 
   1: create the ```pcap``` group if it doesn't exist.
+    ```groupadd pcap```
+    
   2: add your user to that group
+    ```usermod -aG pcap $USER```
+    
   3: set the ```CAP_NET_RAW``` and ```CAP_NET_ADMIN+eip``` capabilities on the tcpdump executable 
+    ```setcap cap_net_raw,cap_net_admin=eip /usr/sbin/tcpdump```
+    Note: Some Linux distros store the tcpdump executable in /usr/bin, or somewhere else 
+    You can find the location by running ```whereis tcpdump```
