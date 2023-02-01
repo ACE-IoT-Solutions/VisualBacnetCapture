@@ -17,7 +17,7 @@ setup(
     version=__version__,
     author="Cristian Romo",
     author_email="cristian@aceiotsolutions.com",
-    description="Agent designed to capture visualbacnet packets over a network and upload them to visualbacnet API",
+    description="Agent designed to capture BACnet network traffic and upload to the Visual BACnet Platform",
     install_requires=['volttron'],
     packages=packages,
     entry_points={
