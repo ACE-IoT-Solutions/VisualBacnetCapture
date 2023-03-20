@@ -40,7 +40,7 @@ def visualbacnetcapture(config_path, **kwargs):
         config = {}
 
     capture_duration = config.get("capture_duration", 300)
-    capture_interval = config.get("capture_interval", 60 * 60)
+    scan_interval = config.get("scan_interval", 60 * 60)
     interface = config.get("interface")
     capture_file = config.get("capture_file", "./packet_capture.pcap")
     protocol = config.get("protocol", "UDP")
@@ -50,7 +50,7 @@ def visualbacnetcapture(config_path, **kwargs):
 
     return VisualBacnetCapture(
         capture_duration,
-        capture_interval,
+        scan_interval,
         interface,
         capture_file,
         protocol,
@@ -69,7 +69,7 @@ class VisualBacnetCapture(Agent):
     def __init__(
         self,
         capture_duration,
-        capture_interval,
+        scan_interval,
         interface,
         capture_file,
         protocol,
@@ -80,7 +80,7 @@ class VisualBacnetCapture(Agent):
     ):
         super(VisualBacnetCapture, self).__init__(**kwargs)
         self.capture_duration = capture_duration
-        self.capture_interval = capture_interval
+        self.scan_interval = scan_interval
         self.interface = interface
         self.capture_file = capture_file
         self.protocol = protocol
@@ -184,7 +184,7 @@ class VisualBacnetCapture(Agent):
         Usually not needed if using the configuration store.
         """
 
-        self.core.periodic(self.capture_interval, self.packet_capture, wait=15)
+        self.core.periodic(self.scan_interval, self.packet_capture, wait=15)
 
     @Core.receiver("onstop")
     def onstop(self, sender, **kwargs):
@@ -196,7 +196,7 @@ class VisualBacnetCapture(Agent):
 
 def main():
     """Main method called to start the agent."""
-    utils.vip_main(visualbacnetcapture, 
+    utils.vip_main(visualbacnetcapture,
                    version=__version__)
 
 
