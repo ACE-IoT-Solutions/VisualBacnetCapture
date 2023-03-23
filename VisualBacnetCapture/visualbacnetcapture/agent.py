@@ -15,6 +15,7 @@ import os
 
 import gevent
 import grequests
+from datetime import datetime
 from volttron.platform.agent import utils
 from volttron.platform.messaging.health import STATUS_BAD, STATUS_GOOD
 from volttron.platform.vip.agent import Agent, Core, RPC
@@ -106,12 +107,13 @@ class VisualBacnetCapture(Agent):
         _log.debug(f"uploading to API... {self.api_url}")
         with open(self.capture_file, "rb") as file:
             filedata = file.read()
+        filename = f"{str(datetime.now()).replace(' ', '_')}_{os.uname()[1]}:{self.capture_file}"
         try:
             request = grequests.post(
                 self.api_url,
                 files=(
                     ("apiKey", (None, self.api_key)),
-                    ("file", (f"{os.uname()[1]}:{self.capture_file}", filedata)),
+                    ("file", (filename, filedata)),
                 ),
             )
             (response,) = grequests.map((request,))
