@@ -107,7 +107,8 @@ class VisualBacnetCapture(Agent):
         _log.debug(f"uploading to API... {self.api_url}")
         with open(self.capture_file, "rb") as file:
             filedata = file.read()
-        filename = f"{str(datetime.now()).replace(' ', '_')}_{os.uname()[1]}:{self.capture_file}"
+        timestamp = f"{str(datetime.now().isoformat(sep='_', timespec='seconds')).replace(':', '-')}"
+        filename = f"{os.uname()[1]}_{timestamp}"
         try:
             request = grequests.post(
                 self.api_url,
@@ -198,11 +199,10 @@ class VisualBacnetCapture(Agent):
 
 def main():
     """Main method called to start the agent."""
-    utils.vip_main(visualbacnetcapture,
-                   version=__version__)
+    utils.vip_main(visualbacnetcapture, version=__version__)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Entry point for script
     try:
         sys.exit(main())
