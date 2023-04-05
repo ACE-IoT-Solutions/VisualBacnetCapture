@@ -22,7 +22,7 @@ from volttron.platform.vip.agent import Agent, Core, RPC
 
 _log = logging.getLogger(__name__)
 utils.setup_logging()
-__version__ = "1.0.0"
+__version__ = "1.0.3"
 
 
 def visualbacnetcapture(config_path, **kwargs):
@@ -108,7 +108,7 @@ class VisualBacnetCapture(Agent):
         with open(self.capture_file, "rb") as file:
             filedata = file.read()
         timestamp = f"{str(datetime.now().isoformat(sep='_', timespec='seconds')).replace(':', '-')}"
-        filename = f"{os.uname()[1]}_{timestamp}"
+        filename = f"{os.uname()[1]}_{timestamp}.pcap"
         try:
             request = grequests.post(
                 self.api_url,
