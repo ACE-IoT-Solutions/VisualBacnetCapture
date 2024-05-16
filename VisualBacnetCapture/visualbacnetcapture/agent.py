@@ -9,6 +9,7 @@ Enable upload of packet captures to the Visual BACnet API
 __docformat__ = "reStructuredText"
 
 import logging
+import getpass
 import sys
 import subprocess
 import os
@@ -22,7 +23,7 @@ from volttron.platform.vip.agent import Agent, Core, RPC
 
 _log = logging.getLogger(__name__)
 utils.setup_logging()
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 
 
 def visualbacnetcapture(config_path, **kwargs):
@@ -166,8 +167,10 @@ class VisualBacnetCapture(Agent):
             )
         except subprocess.CalledProcessError as error:
             _log.error(f"cannot execute tcpdump command: {error.stderr}")
+            self.vip.health.set_status(STATUS_BAD, "tcpdump error")
             return
 
+        self.vip.health.set_status(STATUS_GOOD, "packet capture complete")
         self.upload_to_api()
 
     def _handle_publish(self, peer, sender, bus, topic, headers, message):
