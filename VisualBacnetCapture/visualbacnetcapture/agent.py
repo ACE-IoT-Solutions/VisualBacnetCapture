@@ -6,10 +6,10 @@ Capture network packets for BACnet, or on a configurable protocol and port list
 Enable upload of packet captures to the Visual BACnet API
 
 """
+
 __docformat__ = "reStructuredText"
 
 import logging
-import getpass
 import sys
 import subprocess
 import os
@@ -23,7 +23,7 @@ from volttron.platform.vip.agent import Agent, Core, RPC
 
 _log = logging.getLogger(__name__)
 utils.setup_logging()
-__version__ = "1.0.4"
+__version__ = "1.1.0"
 
 
 def visualbacnetcapture(config_path, **kwargs):
@@ -36,31 +36,8 @@ def visualbacnetcapture(config_path, **kwargs):
     :returns: PacketCapture
     :rtype: PacketCapture
     """
-    try:
-        config = utils.load_config(config_path)
-    except Exception:
-        config = {}
 
-    capture_duration = config.get("capture_duration", 300)
-    scan_interval = config.get("scan_interval", 60 * 60)
-    interface = config.get("interface")
-    capture_file = config.get("capture_file", "./packet_capture.pcap")
-    protocol = config.get("protocol", "UDP")
-    ports = config.get("ports", 47808)
-    api_key = config.get("api_key")
-    api_url = "https://app.visualbacnet.com/api/v2/upload"
-
-    return VisualBacnetCapture(
-        capture_duration,
-        scan_interval,
-        interface,
-        capture_file,
-        protocol,
-        ports,
-        api_key,
-        api_url,
-        **kwargs,
-    )
+    return VisualBacnetCapture(**kwargs)
 
 
 class VisualBacnetCapture(Agent):
@@ -68,29 +45,22 @@ class VisualBacnetCapture(Agent):
     Document agent constructor here.
     """
 
-    def __init__(
-        self,
-        capture_duration,
-        scan_interval,
-        interface,
-        capture_file,
-        protocol,
-        ports,
-        api_key,
-        api_url,
-        **kwargs,
-    ):
+    def __init__(self ,**kwargs):
         super(VisualBacnetCapture, self).__init__(**kwargs)
-        self.capture_duration = capture_duration
-        self.scan_interval = scan_interval
-        self.interface = interface
-        self.capture_file = capture_file
-        self.protocol = protocol
-        self.ports = ports
-        self.api_key = api_key
-        self.api_url = api_url
+        self.capture_duration = None
+        self.capture_interval = None
+        self.interface = None
+        self.capture_file = None
+        self.protocol = None
+        self.ports = None
+        self.api_key = None
+        self.api_url = None
         self.config_store = {}
         self.lock = gevent.lock.BoundedSemaphore()
+        # Hook self.configure up to changes to the configuration file "config".
+        self.vip.config.subscribe(
+            self.configure, actions=["NEW", "UPDATE"], pattern="config"
+        )
 
     def configure(self, config_name, action, contents):
         """
@@ -99,31 +69,80 @@ class VisualBacnetCapture(Agent):
 
         Is called every time the configuration in the store changes.
         """
+        _log.warning(f"configure called with {config_name=}, {action=}, {contents=}")
+        if config_name == "config":
+            self.capture_duration = contents.get("capture_duration")
+            self.capture_interval = contents.get("capture_interval")
+            self.interface = contents.get("interface")
+            self.capture_file = contents.get("capture_file")
+            self.protocol = contents.get("protocol")
+            self.ports = contents.get("ports")
+            self.api_key = contents.get("api_key")
+            self.api_url = contents.get("api_url")
+            self.config_store = contents
+        result = self.check_config()
+        if result is False:
+            _log.error("Configuration check failed. Agent will not start.")
+            return
+        elif result is True:
+            self.config_store = contents
+            self.core.periodic(self.capture_interval, self.packet_capture, wait=15)
+        else:
+            _log.error("Configuration check returned unexpected result.")
+            self.vip.health.set_status(STATUS_BAD, "Configuration check failed")
+            return
+
+    def check_config(self):
+        """
+        Check to make sure all configuration parameters are set
+        """
+        try:
+            assert self.capture_duration, "capture_duration must be set"
+            assert self.capture_interval, "capture_interval must be set"
+            assert self.capture_duration > 0, "capture_duration must be greater than 0"
+            assert self.capture_interval > 0, "capture_interval must be greater than 0"
+            assert self.capture_file, "capture_file must be set"
+            assert self.protocol, "protocol must be set"
+            assert self.ports, "ports must be set"
+            assert self.api_key, "api_key must be set"
+            assert self.api_url, "api_url must be set"
+        except (AssertionError, TypeError) as error:
+            _log.error(f"Configuration error: {error}")
+            self.vip.health.set_status(STATUS_BAD, f"Configuration error: {error}")
+            return False
+        self.vip.health.set_status(STATUS_GOOD, "Configuration is valid")
+        _log.info("Configuration is valid")
+        return True
 
     def upload_to_api(self):
         """
         Upload captured packets to Visual BACnet API
         """
-        self.lock.acquire()
-        _log.debug(f"uploading to API... {self.api_url}")
-        with open(self.capture_file, "rb") as file:
-            filedata = file.read()
-        timestamp = f"{str(datetime.now().isoformat(sep='_', timespec='seconds')).replace(':', '-')}"
-        filename = f"{os.uname()[1]}_{timestamp}.pcap"
-        try:
-            request = grequests.post(
-                self.api_url,
-                files=(
-                    ("apiKey", (None, self.api_key)),
-                    ("file", (filename, filedata)),
-                ),
-            )
-            (response,) = grequests.map((request,))
-            _log.info(f"finished uploading: {response.status_code}")
-        except Exception as error:
-            _log.debug(f"{error=}")
-            self.lock.release()
-        self.lock.release()
+        with self.lock:
+            _log.debug(f"uploading to API... {self.api_url}")
+            with open(self.capture_file, "rb") as file:
+                filedata = file.read()
+            timestamp = f"{str(datetime.now().isoformat(sep='_', timespec='seconds')).replace(':', '-')}"
+            filename = f"{os.uname()[1]}_{timestamp}.pcap"
+            try:
+                request = grequests.post(
+                    self.api_url,
+                    files=(
+                        ("apiKey", (None, self.api_key)),
+                        ("file", (filename, filedata)),
+                    ),
+                )
+                response = grequests.map(
+                    [request], exception_handler=self.grequests_exception_handler
+                )[0]
+                if response is not None:
+                    _log.info(f"finished uploading: {response.status_code}")
+                else:
+                    _log.error("No response from API upload request")
+                    self.vip.health.set_status(STATUS_BAD, "API upload failed")
+                    return
+            except Exception as error:
+                _log.debug(f"{error=}")
 
     def packet_capture(self):
         """
@@ -179,6 +198,12 @@ class VisualBacnetCapture(Agent):
         the topic from the agent's config file
         """
 
+    def grequests_exception_handler(self, request, exception):
+        """
+        Handle exceptions from grequests
+        """
+        _log.error(f"Request failed: {request.url} with exception: {exception}")
+
     @Core.receiver("onstart")
     def onstart(self, sender, **kwargs):
         """
@@ -189,8 +214,10 @@ class VisualBacnetCapture(Agent):
 
         Usually not needed if using the configuration store.
         """
-
-        self.core.periodic(self.scan_interval, self.packet_capture, wait=15)
+        if not self.config_store:
+            _log.error("No configuration found. Please configure the agent.")
+            self.vip.health.set_status(STATUS_BAD, "No configuration found")
+            return
 
     @Core.receiver("onstop")
     def onstop(self, sender, **kwargs):
